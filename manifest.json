@@ -1,0 +1,19 @@
+{
+  "name": "마음 일기",
+  "short_name": "마음일기",
+  "description": "나의 감정을 기록하는 공간",
+  "start_url": "/maum-ilgi/",
+  "scope": "/maum-ilgi/",
+  "display": "standalone",
+  "background_color": "#f7f3ee",
+  "theme_color": "#2a2520",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
