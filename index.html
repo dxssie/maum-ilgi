@@ -50,7 +50,7 @@ button{font-family:inherit;cursor:pointer}
 .google-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
 
 /* ── 앱 레이아웃 ── */
-.app-shell{display:flex;min-height:100vh}
+.app-shell{display:flex;min-height:100vh;background:var(--cream)}
 
 /* ── 사이드바 (PC) ── */
 .sidebar{width:232px;flex-shrink:0;background:var(--sidebar);display:flex;flex-direction:column;position:fixed;height:100vh;top:0;left:0;z-index:200;overflow-y:auto}
@@ -72,7 +72,8 @@ button{font-family:inherit;cursor:pointer}
 .notif-dot{width:7px;height:7px;background:#c0392b;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle}
 
 /* ── 메인 ── */
-.main{margin-left:232px;padding:44px 52px;max-width:880px}
+.main-wrap{margin-left:232px;flex:1;display:flex;justify-content:center;min-width:0}
+.main{width:100%;max-width:800px;padding:44px 48px}
 .page-header{margin-bottom:30px;padding-bottom:22px;border-bottom:1.5px solid var(--ink-faint)}
 .page-title{font-family:'Nanum Myeongjo',serif;font-size:28px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
 .page-sub{font-size:13px;color:var(--ink-light);margin-top:5px}
@@ -183,7 +184,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
   .sidebar{display:none}
   .mob-nav{display:block}
   .mob-header{display:flex}
-  .main{margin-left:0;padding:20px 16px 90px}
+  .main-wrap{margin-left:0}
+  .main{padding:20px 16px 90px}
   .page-title{font-size:22px}
   .two-col{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:repeat(3,1fr)}
@@ -207,12 +209,34 @@ const Av=({photo,name,size=22,cls='av-txt'})=>photo
   ?h('img',{src:photo,className:'av',style:{width:size,height:size},alt:''})
   :h('div',{className:cls,style:{width:size,height:size,fontSize:size*0.42}},ini(name));
 
+function isInAppBrowser(){
+  const ua=navigator.userAgent||'';
+  return /KAKAOTALK|Instagram|FBAN|FBAV|Twitter|Line\/|naver|DaumApps/i.test(ua)||
+    (ua.includes('wv')&&/Android/i.test(ua));
+}
+
+function InAppWarning(){
+  const url=window.location.href;
+  function copyUrl(){navigator.clipboard?.writeText(url).then(()=>alert('주소가 복사됐어요! 브라우저에 붙여넣기 해주세요.')).catch(()=>alert(url))}
+  return h('div',{className:'login-wrap'},
+    h('div',{className:'login-logo'},'마음 일기'),
+    h('div',{style:{background:'#fff8f0',border:'1.5px solid #eeddd4',borderRadius:'20px',padding:'28px 24px',maxWidth:'320px',textAlign:'center'}},
+      h('div',{style:{fontSize:'32px',marginBottom:'14px'}},'🌐'),
+      h('div',{style:{fontFamily:"'Nanum Myeongjo',serif",fontSize:'18px',fontWeight:'700',color:'var(--ink)',marginBottom:'10px'}},'외부 브라우저로 열어주세요'),
+      h('div',{style:{fontSize:'14px',color:'var(--ink-mid)',lineHeight:'1.7',marginBottom:'20px'}},'카카오톡·인스타그램 등 앱 내 브라우저에서는 구글 로그인이 차단돼요. 아래 버튼을 눌러 Chrome이나 Safari에서 열어주세요.'),
+      h('button',{onClick:copyUrl,style:{background:'var(--accent)',color:'white',border:'none',borderRadius:'12px',padding:'13px 24px',fontSize:'14px',width:'100%',cursor:'pointer',marginBottom:'10px',fontFamily:'inherit',fontWeight:'500'}},'🔗 주소 복사하기'),
+      h('div',{style:{fontSize:'12px',color:'var(--ink-light)',marginTop:'8px',lineHeight:'1.6'}},'복사 후 Chrome·Safari 주소창에 붙여넣기 하시면 돼요')
+    )
+  );
+}
+
 function LoginScreen(){
   const [ld,setLd]=useState(false);
+  if(isInAppBrowser())return h(InAppWarning,null);
   async function go(){setLd(true);try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch{setLd(false)}}
   return h('div',{className:'login-wrap'},
     h('div',{className:'login-logo'},'마음 일기'),
-    h('div',{className:'login-sub'},'나의 감정을 기록하고\n친구와 나누는 공간'),
+    h('div',{className:'login-sub'},'나의 감정을 기록하고 친구와 나누는 공간'),
     ld?h('div',{className:'spinner'}):h('button',{className:'google-btn',onClick:go},
       h('svg',{style:{width:20,height:20,flexShrink:0},viewBox:'0 0 24 24'},
         h('path',{fill:'#4285F4',d:'M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z'}),
@@ -570,14 +594,14 @@ function App(){
         u.photoURL?h('img',{src:u.photoURL,className:'sb-av',style:{width:'28px',height:'28px'},alt:''}):h('div',{className:'sb-av',style:{width:'28px',height:'28px',fontSize:'11px'}},ini(u.displayName)),
         h('div',{className:'mob-logo'},'마음 일기')
       ),
-      h('main',{className:'main'},
+      h('div',{className:'main-wrap'},h('main',{className:'main'},
         page==='write'&&h(WritePage,{user:u}),
         page==='my'&&h(MyDiaryPage,{user:u}),
         page==='feed'&&h(FeedPage,{user:u,friendIds:fids}),
         page==='friends'&&h(FriendsPage,{user:u}),
         page==='calendar'&&h(CalendarPage,{user:u}),
         page==='stats'&&h(StatsPage,{user:u})
-      ),
+      )),
       h('nav',{className:'mob-nav'},
         h('div',{className:'mob-nav-inner'},
           nav.map(n=>h('button',{key:n.id,className:'mob-btn'+(page===n.id?' active':''),onClick:()=>setP(n.id)},
