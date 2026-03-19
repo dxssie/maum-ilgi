@@ -255,9 +255,21 @@ function FeedPage({user,friendIds}){
   const [entries,setEntries]=useState([]);const [ld,setLd]=useState(true);
   useEffect(()=>{
     if(!friendIds.length){setLd(false);return}
-    const uids=[...new Set([...friendIds,user.uid])].slice(0,10);
-    return db.collection('entries').where('uid','in',uids).where('isPublic','==',true).orderBy('createdAt','desc').limit(50)
-      .onSnapshot(s=>{setEntries(s.docs.map(d=>({id:d.id,...d.data()})));setLd(false)});
+    // 친구별로 공개 일기를 각각 쿼리 (in 쿼리 10개 제한 우회)
+    const uids=[...new Set([...friendIds,user.uid])];
+    let allEntries=[];let completed=0;const unsubs=[];
+    uids.forEach(uid=>{
+      const unsub=db.collection('entries').where('uid','==',uid).where('isPublic','==',true).orderBy('createdAt','desc').limit(20)
+        .onSnapshot(s=>{
+          const these=s.docs.map(d=>({id:d.id,...d.data()}));
+          allEntries=allEntries.filter(e=>e.uid!==uid).concat(these);
+          allEntries.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+          setEntries([...allEntries]);
+          completed++;if(completed>=uids.length)setLd(false);
+        });
+      unsubs.push(unsub);
+    });
+    return()=>unsubs.forEach(u=>u());
   },[friendIds.join(',')]);
   return h('div',{className:'fade-in'},
     h('div',{className:'page-header'},h('div',{className:'page-title'},'친구 피드'),h('div',{className:'page-sub'},'친구들의 공개 일기')),
@@ -288,14 +300,13 @@ function FriendsPage({user}){
     setResult(s.empty?{notFound:true}:{id:s.docs[0].id,...s.docs[0].data()});setSrching(false);
   }
   async function sendReq(to){
-    await db.batch().update(db.collection('users').doc(to),{friendRequests:firebase.firestore.FieldValue.arrayUnion(user.uid)})
-      .update(db.collection('users').doc(user.uid),{sentRequests:firebase.firestore.FieldValue.arrayUnion(to)}).commit()
-      .catch(()=>null);
-    const b=db.batch();
-    b.update(db.collection('users').doc(to),{friendRequests:firebase.firestore.FieldValue.arrayUnion(user.uid)});
-    b.update(db.collection('users').doc(user.uid),{sentRequests:firebase.firestore.FieldValue.arrayUnion(to)});
-    await b.commit();
-    setResult(null);setEmail('');alert('친구 요청을 보냈어요!');
+    try{
+      const b=db.batch();
+      b.update(db.collection('users').doc(to),{friendRequests:firebase.firestore.FieldValue.arrayUnion(user.uid)});
+      b.update(db.collection('users').doc(user.uid),{sentRequests:firebase.firestore.FieldValue.arrayUnion(to)});
+      await b.commit();
+      setResult(null);setEmail('');alert('친구 요청을 보냈어요!');
+    }catch(e){alert('요청 실패: '+e.message)}
   }
   async function accept(from){
     const b=db.batch();
